@@ -2,10 +2,24 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use warp::ws::Message;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub(crate) struct SignalMessage {
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub(crate) enum MessageType {
+    #[serde(rename = "ping")]
+    Ping,
+    #[serde(rename = "pong")]
+    Pong,
+    #[serde(rename = "publish")]
+    Publish,
+    #[serde(rename = "subscribe")]
+    Subscribe,
+    #[serde(rename = "unsubscribe")]
+    Unsubscribe,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub struct SignalMessage {
     #[serde(rename = "type")]
-    pub(crate) message_type: String,
+    pub(crate) message_type: MessageType,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) topics: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -15,13 +29,42 @@ pub(crate) struct SignalMessage {
 }
 
 impl SignalMessage {
-    pub(crate) fn pong() -> SignalMessage {
+    pub fn ping() -> SignalMessage {
         SignalMessage {
-            message_type: String::from("pong"),
+            message_type: MessageType::Ping,
             topics: None,
             topic: None,
             data: None,
         }
+    }
+
+    pub fn pong() -> SignalMessage {
+        SignalMessage {
+            message_type: MessageType::Pong,
+            topics: None,
+            topic: None,
+            data: None,
+        }
+    }
+
+    pub fn is_ping(&self) -> bool {
+        matches!(self.message_type, MessageType::Ping)
+    }
+
+    pub fn is_pong(&self) -> bool {
+        matches!(self.message_type, MessageType::Pong)
+    }
+
+    pub fn is_publish(&self) -> bool {
+        matches!(self.message_type, MessageType::Publish)
+    }
+
+    pub fn is_subscribe(&self) -> bool {
+        matches!(self.message_type, MessageType::Subscribe)
+    }
+
+    pub fn is_unsubscribe(&self) -> bool {
+        matches!(self.message_type, MessageType::Unsubscribe)
     }
 }
 

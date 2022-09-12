@@ -1,4 +1,4 @@
-use crate::msg::SignalMessage;
+use crate::msg::{MessageType, SignalMessage};
 use crate::topic::{AsTopic, AsTopics, Topics};
 use futures_util::stream::SplitSink;
 use futures_util::{SinkExt, StreamExt};
@@ -11,6 +11,7 @@ use tokio::sync::mpsc::{Receiver, UnboundedReceiver, UnboundedSender};
 use tokio::time;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
+use MessageType::{Ping, Pong, Publish, Subscribe, Unsubscribe};
 
 pub async fn on_connection(socket: WebSocket, topics: Topics, next_uid: Arc<AtomicUsize>) {
     let uid = next_uid.fetch_add(1, Ordering::Relaxed);
@@ -46,13 +47,13 @@ pub async fn on_connection(socket: WebSocket, topics: Topics, next_uid: Arc<Atom
             _ if ws_msg.is_text() => {
                 let msg = SignalMessage::from(&ws_msg);
                 debug!("received signal msg: {:?}", msg);
-                match msg.message_type.as_str() {
-                    "ping" => {
+                match msg.message_type {
+                    Ping => {
                         tx.send(Message::from(&SignalMessage::pong()))
                             .unwrap_or_else(|e| error!("failed to send pong: {}", e));
                         debug!("user(uid={}) pinged", uid)
                     }
-                    "publish" => {
+                    Publish => {
                         let msg_ref = &msg;
                         if let Some(topic_name) = msg.topic.as_ref() {
                             if let Some(topic) = topics.get(topic_name).unwrap_or_else(|e| {
@@ -69,7 +70,7 @@ pub async fn on_connection(socket: WebSocket, topics: Topics, next_uid: Arc<Atom
                             }
                         }
                     }
-                    "subscribe" => {
+                    Subscribe => {
                         for topic_name in msg.topics.unwrap_or_default() {
                             topics
                                 .create_if_not_exists(&topic_name)
@@ -83,7 +84,7 @@ pub async fn on_connection(socket: WebSocket, topics: Topics, next_uid: Arc<Atom
                                 .unwrap_or_else(|e| error!("failed to create topic: {}", e));
                         }
                     }
-                    "unsubscribe" => {
+                    Unsubscribe => {
                         for topic_name in msg.topics.unwrap_or_default() {
                             unsubscribe(topics.clone(), topic_name.as_str(), uid);
                             subscribed_topics.remove(topic_name.as_str());
@@ -91,7 +92,7 @@ pub async fn on_connection(socket: WebSocket, topics: Topics, next_uid: Arc<Atom
                         }
                         debug!("user(uid={}) unsubscribed topics={:?}", uid, topics)
                     }
-                    _ => error!("invalid signal msg: {:?}", msg),
+                    Pong => trace!("skip processing pong msg"),
                 }
             }
             _ => debug!("others websocket msg: {:?}", ws_msg),
