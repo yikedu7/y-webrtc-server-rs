@@ -21,11 +21,11 @@ pub struct SignalMessage {
     #[serde(rename = "type")]
     pub(crate) message_type: MessageType,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) topics: Option<Vec<String>>,
+    pub topics: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) topic: Option<String>,
+    pub topic: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub(crate) data: Option<HashMap<String, String>>,
+    pub data: Option<HashMap<String, String>>,
 }
 
 impl SignalMessage {
@@ -44,6 +44,33 @@ impl SignalMessage {
             topics: None,
             topic: None,
             data: None,
+        }
+    }
+
+    pub fn subscribe(topics: Vec<String>) -> SignalMessage {
+        SignalMessage {
+            message_type: MessageType::Subscribe,
+            topics: Some(topics),
+            topic: None,
+            data: None,
+        }
+    }
+
+    pub fn unsubscribe(topics: Vec<String>) -> SignalMessage {
+        SignalMessage {
+            message_type: MessageType::Unsubscribe,
+            topics: Some(topics),
+            topic: None,
+            data: None,
+        }
+    }
+
+    pub fn publish(topic: String, data: HashMap<String, String>) -> SignalMessage {
+        SignalMessage {
+            message_type: MessageType::Publish,
+            topics: None,
+            topic: Some(topic),
+            data: Some(data),
         }
     }
 
